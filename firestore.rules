@@ -1,0 +1,29 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /events/{eventId} {
+      allow read: if true;
+
+      // Writes require a Firebase Auth session (anonymous is fine). Documents
+      // may only contain the anonymous schema fields — no author/session data.
+      allow create: if request.auth != null && validEvent(request.resource.data);
+      allow delete: if request.auth != null;
+      allow update: if false;
+    }
+
+    function validEvent(d) {
+      return d.keys().hasOnly(['title', 'summary', 'locationName', 'lat', 'lng', 'category', 'sourceUrl', 'mediaUrl', 'createdAt', 'expiresAt'])
+        && d.keys().hasAll(['title', 'summary', 'locationName', 'lat', 'lng', 'category', 'createdAt', 'expiresAt'])
+        && d.title is string && d.title.size() <= 60
+        && d.summary is string && d.summary.size() <= 1000
+        && d.locationName is string && d.locationName.size() <= 200
+        && d.lat is number && d.lat >= -90 && d.lat <= 90
+        && d.lng is number && d.lng >= -180 && d.lng <= 180
+        && d.category in ['strike', 'military_movement', 'infrastructure', 'civilian', 'general']
+        && d.createdAt is int && d.createdAt % 60000 == 0
+        && d.expiresAt == d.createdAt + 86400000
+        && (!('sourceUrl' in d) || (d.sourceUrl is string && d.sourceUrl.matches('^https?://.*')))
+        && (!('mediaUrl' in d) || (d.mediaUrl is string && d.mediaUrl.size() < 1000000));
+    }
+  }
+}

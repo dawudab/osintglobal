@@ -1,0 +1,59 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+  background: #05070a;
+  color: #e2e8f0;
+  overscroll-behavior: none;
+}
+
+body {
+  @apply font-mono antialiased;
+}
+
+@layer components {
+  .glass {
+    @apply border border-amber/25 bg-panel/85 backdrop-blur-md;
+  }
+  .hud-label {
+    @apply text-[10px] font-bold uppercase tracking-[0.2em] text-amber;
+  }
+  .tac-btn {
+    @apply inline-flex min-h-[44px] items-center justify-center gap-2 rounded border border-amber/40 bg-panel/80 px-3 text-xs font-bold uppercase tracking-widest text-amber transition active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-40;
+  }
+  .tac-btn-active {
+    @apply border-amber bg-amber/15 text-amber-hot shadow-[0_0_12px_rgba(245,158,11,0.35)];
+  }
+  .tac-input {
+    @apply w-full rounded border border-slate-700 bg-black/60 px-3 py-2.5 text-sm text-slate-100 placeholder:text-slate-600 focus:border-amber focus:outline-none focus:ring-1 focus:ring-amber/50;
+  }
+  .badge-ok {
+    @apply inline-flex items-center gap-1 rounded border border-emerald-500/50 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-emerald-400;
+  }
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  scrollbar-width: none;
+}
+
+.scanlines::after {
+  content: '';
+  pointer-events: none;
+  position: fixed;
+  inset: 0;
+  background: repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.015) 0 1px, transparent 1px 3px);
+  z-index: 60;
+}
