@@ -4,22 +4,23 @@ service cloud.firestore {
     match /events/{eventId} {
       allow read: if true;
 
-      // Writes require a Firebase Auth session (anonymous is fine). Documents
-      // may only contain the anonymous schema fields — no author/session data.
-      allow create: if request.auth != null && validEvent(request.resource.data);
-      allow delete: if request.auth != null;
+      // Client-side password gate controls access to the publisher console.
+      // Documents may only contain anonymous dispatch schema fields.
+      allow create: if validEvent(request.resource.data);
+      allow delete: if true;
       allow update: if false;
     }
 
     function validEvent(d) {
-      return d.keys().hasOnly(['title', 'summary', 'locationName', 'lat', 'lng', 'category', 'sourceUrl', 'mediaUrl', 'createdAt', 'expiresAt'])
+      return d.keys().hasOnly(['title', 'summary', 'locationName', 'lat', 'lng', 'category', 'tags', 'sourceUrl', 'mediaUrl', 'createdAt', 'expiresAt'])
         && d.keys().hasAll(['title', 'summary', 'locationName', 'lat', 'lng', 'category', 'createdAt', 'expiresAt'])
-        && d.title is string && d.title.size() <= 60
-        && d.summary is string && d.summary.size() <= 1000
+        && d.title is string && d.title.size() <= 120
+        && d.summary is string && d.summary.size() <= 1500
         && d.locationName is string && d.locationName.size() <= 200
         && d.lat is number && d.lat >= -90 && d.lat <= 90
         && d.lng is number && d.lng >= -180 && d.lng <= 180
         && d.category in ['strike', 'military_movement', 'infrastructure', 'civilian', 'general']
+        && (!('tags' in d) || (d.tags is list && d.tags.size() <= 10))
         && d.createdAt is int && d.createdAt % 60000 == 0
         && d.expiresAt == d.createdAt + 86400000
         && (!('sourceUrl' in d) || (d.sourceUrl is string && d.sourceUrl.matches('^https?://.*')))

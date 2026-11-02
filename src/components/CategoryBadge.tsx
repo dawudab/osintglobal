@@ -1,15 +1,27 @@
 import type { EventCategory } from '../types';
-import { CATEGORIES, hexToRgba } from '../utils/categories';
+import { CATEGORIES, isAlertTag } from '../utils/categories';
 
-export default function CategoryBadge({ category }: { category: EventCategory }) {
-  const { label, color } = CATEGORIES[category];
+interface Props {
+  category?: EventCategory;
+  tags?: string[];
+}
+
+export default function CategoryBadge({ category = 'general', tags }: Props) {
+  const list = tags && tags.length > 0 ? tags : [CATEGORIES[category]?.defaultTag ?? 'Dispatch'];
+
   return (
-    <span
-      className="inline-flex items-center gap-1.5 rounded-sm border px-1.5 py-0.5 text-[10px] font-bold tracking-widest"
-      style={{ color, borderColor: hexToRgba(color, 0.5), background: hexToRgba(color, 0.1) }}
-    >
-      <span className="h-1.5 w-1.5 rounded-full" style={{ background: color, boxShadow: `0 0 6px ${color}` }} />
-      {label}
-    </span>
+    <div className="flex flex-wrap items-center gap-1.5 text-[10px] uppercase tracking-wider font-mono">
+      {list.map((tag, i) => {
+        const alert = isAlertTag(tag);
+        const colorClass = alert ? 'text-crimson font-bold' : 'text-zinc-300 font-medium';
+
+        return (
+          <span key={tag} className="inline-flex items-center gap-1.5">
+            {i > 0 && <span className="text-zinc-600 select-none">·</span>}
+            <span className={colorClass}>{tag}</span>
+          </span>
+        );
+      })}
+    </div>
   );
 }

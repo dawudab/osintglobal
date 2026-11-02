@@ -11,7 +11,7 @@ interface Props {
   children: ReactNode;
 }
 
-/** Bottom sheet on mobile (drag handle to dismiss), floating sidebar on md+. */
+/** Smooth iOS slide-up bottom sheet on mobile (< 768px), floating glass panel on desktop (md+). */
 export default function Panel({ open, onClose, title, side, className, children }: Props) {
   const [drag, setDrag] = useState(0);
   const start = useRef<number | null>(null);
@@ -24,7 +24,7 @@ export default function Panel({ open, onClose, title, side, className, children 
     if (start.current !== null) setDrag(Math.max(0, e.clientY - start.current));
   };
   const onUp = () => {
-    if (drag > 80) onClose();
+    if (drag > 75) onClose();
     start.current = null;
     setDrag(0);
   };
@@ -34,8 +34,8 @@ export default function Panel({ open, onClose, title, side, className, children 
       aria-hidden={!open}
       style={drag ? { transform: `translateY(${drag}px)`, transition: 'none' } : undefined}
       className={cn(
-        'glass fixed inset-x-0 bottom-0 z-30 flex max-h-[72dvh] flex-col rounded-t-2xl border-b-0 pb-[calc(env(safe-area-inset-bottom)+76px)] shadow-[0_-8px_40px_rgba(0,0,0,0.6)] transition-transform duration-300 ease-out',
-        'md:inset-x-auto md:bottom-24 md:top-20 md:max-h-none md:w-[380px] md:rounded-xl md:border-b md:pb-0',
+        'fixed inset-x-0 bottom-0 z-30 flex max-h-[76dvh] flex-col rounded-t-3xl border border-white/10 border-b-0 bg-zinc-950/95 backdrop-blur-2xl pb-[calc(env(safe-area-inset-bottom)+72px)] shadow-[0_-20px_50px_rgba(0,0,0,0.9)] transition-transform duration-300 ease-out',
+        'md:inset-x-auto md:bottom-24 md:top-24 md:max-h-none md:w-[400px] md:rounded-2xl md:border md:pb-0',
         side === 'left' ? 'md:left-4' : 'md:right-4',
         open
           ? 'translate-y-0 md:translate-x-0'
@@ -44,17 +44,24 @@ export default function Panel({ open, onClose, title, side, className, children 
       )}
     >
       <div
-        className="flex cursor-grab touch-none justify-center pb-1 pt-2.5 md:hidden"
+        className="flex min-h-[30px] cursor-grab touch-none items-center justify-center pb-1 pt-2 md:hidden"
         onPointerDown={onDown}
         onPointerMove={onMove}
         onPointerUp={onUp}
         onPointerCancel={onUp}
       >
-        <div className="h-1.5 w-12 rounded-full bg-amber/50" />
+        <div className="h-1 w-10 rounded-full bg-white/20" />
       </div>
-      <header className="flex items-center justify-between border-b border-amber/20 px-4 pb-2 md:pt-3">
-        <h2 className="hud-label">{title}</h2>
-        <button onClick={onClose} aria-label="Close panel" className="-mr-2 grid h-10 w-10 place-items-center text-amber/80 active:text-amber">
+      <header className="flex items-center justify-between border-b border-white/[0.08] px-4 pb-2.5 pt-1 md:pt-3">
+        <div className="flex items-center gap-2">
+          <span className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" />
+          <h2 className="text-xs font-bold font-mono tracking-widest text-white uppercase">{title}</h2>
+        </div>
+        <button
+          onClick={onClose}
+          aria-label="Close panel"
+          className="-mr-1 inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-xl text-zinc-400 transition hover:bg-white/[0.08] hover:text-white active:scale-95"
+        >
           <X size={18} />
         </button>
       </header>

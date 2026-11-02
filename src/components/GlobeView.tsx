@@ -1,7 +1,7 @@
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react';
 import Globe, { type GlobeMethods } from 'react-globe.gl';
 import type { OsintEvent } from '../types';
-import { CATEGORIES, hexToRgba } from '../utils/categories';
+import { getEventColor, getEventTags, hexToRgba } from '../utils/categories';
 import { escapeHtml } from '../utils/format';
 
 export interface GlobeHandle {
@@ -12,12 +12,15 @@ interface Props {
   events: OsintEvent[];
   selectedId?: string;
   onSelect: (e: OsintEvent) => void;
+  autoRotate?: boolean;
+  showAtmosphere?: boolean;
 }
 
-const GlobeView = forwardRef<GlobeHandle, Props>(function GlobeView({ events, selectedId, onSelect }, ref) {
+const GlobeView = forwardRef<GlobeHandle, Props>(function GlobeView({ events, selectedId, onSelect, autoRotate = true, showAtmosphere = true }, ref) {
   const wrapRef = useRef<HTMLDivElement>(null);
   const globeRef = useRef<GlobeMethods | undefined>(undefined);
   const [size, setSize] = useState({ w: window.innerWidth, h: window.innerHeight });
+  const isMobile = size.w < 768;
 
   useImperativeHandle(ref, () => ({
     flyTo: (lat, lng, altitude = 1.5) => {
@@ -58,13 +61,24 @@ const GlobeView = forwardRef<GlobeHandle, Props>(function GlobeView({ events, se
     c.minDistance = 120;
     c.maxDistance = 600;
     c.addEventListener('start', () => (c.autoRotate = false));
-    g.pointOfView({ lat: 25, lng: 30, altitude: window.innerWidth < 768 ? 2.6 : 2.1 }, 0);
+    g.pointOfView({ lat: 25, lng: 30, altitude: window.innerWidth < 768 ? 2.5 : 2.05 }, 0);
   }, []);
+
+  // Dynamically update autoRotate if setting changed by user
+  useEffect(() => {
+    const g = globeRef.current;
+    if (!g) return;
+    try {
+      g.controls().autoRotate = autoRotate;
+    } catch {
+      // controls may not be initialized yet
+    }
+  }, [autoRotate]);
 
   const rings = useMemo(() => events.map((e) => ({ ...e, _sel: e.id === selectedId })), [events, selectedId]);
 
   return (
-    <div ref={wrapRef} className="absolute inset-0" style={{ touchAction: 'none' }}>
+    <div ref={wrapRef} className="absolute inset-0 bg-black" style={{ touchAction: 'none' }}>
       <Globe
         ref={globeRef}
         width={size.w}
@@ -72,36 +86,37 @@ const GlobeView = forwardRef<GlobeHandle, Props>(function GlobeView({ events, se
         onGlobeReady={onReady}
         backgroundColor="rgba(0,0,0,0)"
         globeImageUrl="/textures/earth-dark.jpg"
-        showAtmosphere
-        atmosphereColor="#00e5ff"
-        atmosphereAltitude={0.15}
+        showAtmosphere={showAtmosphere}
+        atmosphereColor="#ffffff"
+        atmosphereAltitude={0.14}
         rendererConfig={{ antialias: window.devicePixelRatio < 2, powerPreference: 'high-performance', alpha: true }}
         pointsData={events}
         pointLat="lat"
         pointLng="lng"
-        pointColor={(d) => CATEGORIES[(d as OsintEvent).category].color}
-        pointAltitude={(d) => ((d as OsintEvent).id === selectedId ? 0.12 : 0.03)}
-        pointRadius={0.65}
-        pointResolution={12}
+        pointColor={(d) => getEventColor(d as OsintEvent)}
+        pointAltitude={(d) => ((d as OsintEvent).id === selectedId ? 0.14 : 0.04)}
+        pointRadius={isMobile ? 1.15 : 0.85}
+        pointResolution={18}
         pointsMerge={false}
-        pointsTransitionDuration={300}
+        pointsTransitionDuration={250}
         pointLabel={(d) => {
           const e = d as OsintEvent;
-          const c = CATEGORIES[e.category];
-          return `<div style="font-family:ui-monospace,monospace;background:rgba(10,15,24,.92);border:1px solid ${c.color};padding:6px 8px;border-radius:4px;max-width:240px"><div style="color:${c.color};font-size:10px;letter-spacing:.15em">${c.label}</div><div style="color:#e2e8f0;font-size:12px">${escapeHtml(e.title)}</div><div style="color:#00e5ff;font-size:10px">${escapeHtml(e.locationName)}</div></div>`;
+          const color = getEventColor(e);
+          const tags = getEventTags(e).join(' · ').toUpperCase();
+          return `<div style="font-family:ui-monospace,monospace;background:rgba(9,9,11,.92);backdrop-filter:blur(16px);border:1px solid rgba(255,255,255,.15);border-top:2px solid ${color};padding:8px 12px;border-radius:10px;box-shadow:0 12px 32px rgba(0,0,0,.7);max-width:260px"><div style="color:${color};font-size:10px;font-weight:700;letter-spacing:.15em">${escapeHtml(tags)}</div><div style="color:#ffffff;font-size:12px;margin-top:2px;font-weight:600;line-height:1.35">${escapeHtml(e.title)}</div><div style="color:#a1a1aa;font-size:10px;margin-top:4px">${escapeHtml(e.locationName)}</div></div>`;
         }}
         onPointClick={(d) => onSelect(d as OsintEvent)}
         ringsData={rings}
         ringLat="lat"
         ringLng="lng"
         ringColor={(d: object) => {
-          const color = CATEGORIES[(d as OsintEvent).category].color;
+          const color = getEventColor(d as OsintEvent);
           return (t: number) => hexToRgba(color, Math.max(0, 1 - t));
         }}
-        ringMaxRadius={(d) => ((d as { _sel: boolean })._sel ? 6 : 3.5)}
-        ringPropagationSpeed={2.5}
+        ringMaxRadius={(d) => ((d as { _sel: boolean })._sel ? 6.5 : 3.8)}
+        ringPropagationSpeed={2.4}
         ringRepeatPeriod={(d) => ((d as { _sel: boolean })._sel ? 600 : 1400)}
-        ringAltitude={0.004}
+        ringAltitude={0.005}
       />
     </div>
   );

@@ -1,4 +1,5 @@
-import type { EventCategory, EventDraft } from '../types';
+import type { EventDraft } from '../types';
+import { tagsToCategory } from './categories';
 
 const GAZETTEER: [RegExp, string, number, number][] = [
   [/kyiv|kiev|київ|киев/i, 'Kyiv, Ukraine', 50.4501, 30.5234],
@@ -48,32 +49,49 @@ const GAZETTEER: [RegExp, string, number, number][] = [
   [/goma/i, 'Goma, DR Congo', -1.6585, 29.2203],
   [/mogadishu|مقديشو/i, 'Mogadishu, Somalia', 2.0469, 45.3182],
   [/kabul|كابل/i, 'Kabul, Afghanistan', 34.5553, 69.2075],
+  [/tbilisi/i, 'Tbilisi, Georgia', 41.7151, 44.8271],
+  [/seoul/i, 'Seoul, South Korea', 37.5665, 126.978],
+  [/paris/i, 'Paris, France', 48.8566, 2.3522],
+  [/berlin/i, 'Berlin, Germany', 52.52, 13.405],
+  [/london/i, 'London, United Kingdom', 51.5072, -0.1276],
+  [/washington/i, 'Washington, United States', 38.9072, -77.0369],
+  [/nairobi/i, 'Nairobi, Kenya', -1.2921, 36.8219],
 ];
 
-const CATEGORY_RULES: [EventCategory, RegExp][] = [
-  ['strike', /strike|airstrike|missile|drone|explosion|shell|bomb|attack|удар|ракет|дрон|взрыв|обстрел|атак|غارة|قصف|صاروخ|انفجار|مسيرة|ataque|bombarde|explos|míssil|misil|dron/i],
-  ['military_movement', /column|convoy|troops|deploy|warship|naval|armou?r|tank|mobiliz|колонн|войск|техник|танк|флот|رتل|قوات|دبابات|انتشار|tropas|blindad|despliegue|navio|buque/i],
-  ['infrastructure', /power|grid|outage|blackout|bridge|pipeline|refinery|port|dam|substation|энерг|свет|мост|нпз|подстанц|كهرباء|جسر|مصفاة|ميناء|apag[aã]o|energ[ií]a|puente|ponte|refin/i],
-  ['civilian', /civilian|refugee|displac|humanitarian|aid|hospital|casualt|evacuat|мирн|беженц|эвакуац|больниц|مدنيين|نازحين|لاجئين|مستشفى|إنسانية|civis|civiles|refugiad|desplazad|humanit/i],
+const TAG_RULES: [string, RegExp][] = [
+  ['Protest', /protest|demonstrat|march|rally|riot|strike|activist|crowd|dissent|oppos|манифест|протест|مظاهر|احتجاج|protesta/i],
+  ['Conflict', /strike|airstrike|missile|drone|explosion|shell|bomb|attack|clash|combat|military|troops|armed|удар|ракет|дрон|взрыв|غارة|قصف|صاروخ|ataque/i],
+  ['Tech/Cyber', /cyber|hack|breach|internet|blackout|outage|telecom|ddos|ransomware|surveillance|censorship|server|ai|grid|хакер|интернет|سبراني|إنترنت/i],
+  ['Government', /government|ministry|parliament|president|election|policy|sanction|law|court|decree|regime|state|правительств|выбор|حكومة|انتخابات/i],
+  ['Human Rights', /human rights|civilian|refugee|displac|humanitarian|aid|hospital|casualt|evacuat|detain|arrest|journalist|prison|беженц|مدنيين|نازحين|حقوق/i],
+  ['Election', /election|ballot|vote|voter|polling|referendum|выборы|انتخابات|elecci/i],
+  ['Economic Crisis', /inflation|currency|bank|debt|shortage|famine|sanction|tariff|strike|economy|экономик|اقتصاد/i],
 ];
 
 const URL_RE = /https?:\/\/[^\s<>"')]+/i;
 
-/** Offline fallback when Gemini is unavailable: keyword categorization + small gazetteer. */
+/** Offline fallback when Gemini is unavailable: keyword tagger + gazetteer. */
 export function heuristicParse(raw: string): EventDraft {
   const text = raw.replace(/\s+/g, ' ').trim();
   const sourceUrl = text.match(URL_RE)?.[0];
   const clean = text.replace(new RegExp(URL_RE, 'gi'), '').replace(/[#@]\S+/g, '').trim();
   const sentences = clean.split(/(?<=[.!?。])\s+/).filter(Boolean);
   const first = sentences[0] ?? clean;
-  const title = first.length > 60 ? first.slice(0, 57).trimEnd() + '…' : first;
-  const summary = sentences.slice(0, 2).join(' ').slice(0, 400);
-  const category = CATEGORY_RULES.find(([, re]) => re.test(text))?.[0] ?? 'general';
+  const title = first.length > 80 ? first.slice(0, 77).trimEnd() + '…' : first;
+  const summary = sentences.slice(0, 3).join(' ').slice(0, 500);
+
+  const matchedTags = TAG_RULES.filter(([, re]) => re.test(text))
+    .map(([tag]) => tag)
+    .slice(0, 3);
+  const tags = matchedTags.length > 0 ? matchedTags : ['Protest'];
+  const category = tagsToCategory(tags);
   const hit = GAZETTEER.find(([re]) => re.test(text));
+
   return {
     title,
     summary,
     category,
+    tags,
     locationName: hit?.[1] ?? '',
     lat: hit?.[2] ?? 0,
     lng: hit?.[3] ?? 0,

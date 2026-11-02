@@ -1,7 +1,7 @@
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import type { OsintEvent } from '../types';
-import { CATEGORIES } from './categories';
+import { getEventTags } from './categories';
 
 export const cn = (...inputs: ClassValue[]) => twMerge(clsx(inputs));
 
@@ -23,21 +23,24 @@ export const formatUtc = (d: Date) => d.toISOString().slice(11, 19) + ' UTC';
 export const escapeHtml = (s: string) =>
   s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!);
 
-export function sitrepText(e: OsintEvent) {
+export function dispatchText(e: OsintEvent) {
   const ts = new Date(e.createdAt).toISOString().replace('T', ' ').slice(0, 16) + 'Z';
+  const tags = getEventTags(e).join(' · ');
   return [
-    `// SITREP — ${CATEGORIES[e.category].label}`,
+    `NEWS DISPATCH — [${tags.toUpperCase()}]`,
     e.title.toUpperCase(),
     `LOC: ${e.locationName} (${formatCoords(e.lat, e.lng)})`,
-    `DTG: ${ts}`,
+    `TIME: ${ts}`,
     '',
     e.summary,
     e.sourceUrl ? `\nSRC: ${e.sourceUrl}` : '',
-    '— CENTCOM // OSINT TRACKER',
+    '— RN // GLOBAL (RESISTANCE NETWORK)',
   ]
     .filter((l) => l !== '')
     .join('\n');
 }
+
+export const sitrepText = dispatchText;
 
 export async function copyText(text: string) {
   try {
